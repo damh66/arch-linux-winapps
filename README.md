@@ -2,6 +2,8 @@
 
 **[Официальный репозиторий WinApps](https://github.com/Fmstrat/winapps)**
 
+***Полностью исправная работа WinApps возможна только на Linux с GNOME и KDE***
+
 ### 1. Настройка виртуальной машины Windows
 
 Создаем и настраиваем виртуальную машину по инструкции с [официального репозитория WinApps](https://github.com/Fmstrat/winapps/blob/main/docs/KVM.md)
@@ -57,16 +59,7 @@ RDP_PASS="MyWindowsPassword"
 uri_default = "qemu:///system"
 ```
 
-Добавляем пользователя в группу `libvirt`:
-```
-sudo usermod -aG libvirt $(whoami)
-```
-> Если группы не существует, то создаем ее:
-> ```
-> newgrp libvirt
-> ```
-
-Переходим в раннее клонированный репозиторий и пишем:
+Переходим в раннее клонированный репозиторий и прописываем:
 ```
 cd winapps
 virsh define kvm/RDPWindows.xml
@@ -78,6 +71,36 @@ virsh autostart RDPWindows
 > `virsh start` - запуск виртуальной машины
 >
 > `virsh autostart` - автозапуск виртуальной машины при загрузке хоста KVM
+
+Проверяем список виртуальных интерфейсов:
+```
+virsh net-list --all
+```
+
+Включаем виртуальный интерфейс и добавляем его в автозапуск:
+```
+virsh net-start default
+virsh net-autostart --network default
+```
+
+Настройка KVM для возможности запуска от имени обычного пользователя:
+```
+sudo sed -i "s/#user = "root"/user = "$(id -un)"/g" /etc/libvirt/qemu.conf
+sudo sed -i "s/#group = "root"/group = "$(id -gn)"/g" /etc/libvirt/qemu.conf
+sudo usermod -aG kvm $(id -un)
+sudo usermod -aG libvirt $(id -un)
+sudo systemctl restart libvirtd
+sudo ln -s /etc/apparmor.d/usr.sbin.libvirtd /etc/apparmor.d/disable/
+```
+> Если группы **libvirt** не существует, то создаем ее:
+> ```
+> newgrp libvirt
+> ```
+
+Перезагружаем ПК, чтобы изменения вступили в силу
+```
+systemctl reboot
+```
 
 ### 4. Запуск установщика WinApps
 
@@ -94,12 +117,12 @@ bin/winapps check
 Среди выходных данных нужно будет **принять** предложенный сертификат безопасности. После этого должно появиться окно **Проводника Windows**. Вы можете закрыть это окно и нажать `Ctrl-C`, чтобы выйти из FreeRDP
 
 Если появились ошибка, попробуйте перезапустить виртуальную машину. Если перезапуск ВМ не помог, причины могут быть в этом:
-* Не приняли **сертификат безопасности** при первом подключении
-* Не включили **RDP**(удаленный рабочий стол) в виртуальной машине
+* Не принят **сертификат безопасности** при первом подключении
+* Не включен **RDP**(удаленный рабочий стол) в виртуальной машине
 * Указан **неверный IP-адрес** в `~/.config/winapps/winapps.conf`
   > если на виртуальной машине задан статический **IP-адрес**
 * Неправильные **учетные данные пользователя** в `~/.config/winapps/winapps.conf`
-* Не объединили **данные реестра** `winapps/install/RDPApps.reg` на виртуальной машине
+* Не объединены **данные реестра** `winapps/install/RDPApps.reg` в виртуальной машине
 
 Если ошибки не возникают, запускаем **установщик**:
 ```
