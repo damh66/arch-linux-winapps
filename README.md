@@ -1,4 +1,4 @@
-# WinApps на ArchLinux
+# Установка Winapps на Arch Linux
 
 **[Официальный репозиторий WinApps](https://github.com/Fmstrat/winapps)**
 
